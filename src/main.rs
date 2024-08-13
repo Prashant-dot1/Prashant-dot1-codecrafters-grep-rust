@@ -5,7 +5,20 @@ use std::process;
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
     if pattern.chars().count() == 1 {
         return input_line.contains(pattern);
-    } else {
+    } 
+    else if pattern == "\\d" {
+        for i in 0..10 {
+            let pattern = ('0' as u8 + i) as char;
+            println!("printing pattern : {pattern}");
+            
+            if input_line.contains(pattern) {
+                println!("the parttern matched for {pattern}");
+                return true;
+            }
+        }
+        return false;
+    }
+    else {
         panic!("Unhandled pattern: {}", pattern)
     }
 }
