@@ -7,16 +7,17 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
         return input_line.contains(pattern);
     } 
     else if pattern == "\\d" {
-        for i in 0..10 {
-            let pattern = ('0' as u8 + i) as char;
-            println!("printing pattern : {pattern}");
+        // for i in 0..10 {
+        //     let pattern = ('0' as u8 + i) as char;
+        //     println!("printing pattern : {pattern}");
             
-            if input_line.contains(pattern) {
-                println!("the parttern matched for {pattern}");
-                return true;
-            }
-        }
-        return false;
+        //     if input_line.contains(pattern) {
+        //         println!("the parttern matched for {pattern}");
+        //         return true;
+        //     }
+        // }
+        // return false;
+        return input_line.contains(|c: char| {c.is_digit(10)});
     }
     else {
         panic!("Unhandled pattern: {}", pattern)
