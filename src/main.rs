@@ -22,6 +22,16 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     else if pattern == "\\w" {
         return input_line.contains(|c : char| {c.is_alphanumeric()});
     }
+    else if pattern.starts_with("[") {
+        let len = pattern.len();
+        let pat = &pattern[1..len-1];
+
+        let list_of_chars : Vec<char>= pat.chars().collect();
+        
+        let r = input_line.contains(&list_of_chars[..]);
+        println!("r : {r}");
+        return r;
+    }
     else {
         panic!("Unhandled pattern: {}", pattern)
     }
