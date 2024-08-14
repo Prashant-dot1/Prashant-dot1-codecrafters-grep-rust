@@ -1,5 +1,6 @@
 use std::env;
 use std::io;
+use std::ops::Index;
 use std::process;
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
@@ -22,15 +23,23 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     else if pattern == "\\w" {
         return input_line.contains(|c : char| {c.is_alphanumeric()});
     }
-    else if pattern.starts_with("[") {
+    else if pattern.starts_with("[") && pattern.ends_with("]"){
         let len = pattern.len();
-        let pat = &pattern[1..len-1];
 
-        let list_of_chars : Vec<char>= pat.chars().collect();
-        
-        let r = input_line.contains(&list_of_chars[..]);
-        println!("r : {r}");
-        return r;
+        match &pattern.chars().nth(1).unwrap() {
+            '^' => { 
+                let pat = &pattern[2..len-1];
+                println!("pat : {pat}");
+                let list_of_chars : Vec<char> = pat.chars().collect();
+                return !input_line.contains(&list_of_chars[..])
+            },
+            _ => {
+                let pat = &pattern[1..len-1];
+                println!("pat : {pat}");
+                let list_of_chars : Vec<char> = pat.chars().collect();
+                return input_line.contains(&list_of_chars[..])
+            }
+        };
     }
     else {
         panic!("Unhandled pattern: {}", pattern)
