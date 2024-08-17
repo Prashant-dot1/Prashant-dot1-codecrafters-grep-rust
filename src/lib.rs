@@ -1,6 +1,8 @@
-use std::{str::FromStr};
+use std::{collections::HashSet, hash::Hash, str::FromStr};
 
-#[derive(Debug)]
+use map_macro::hash_set;
+
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum Pattern {
     Numeric,
     AlphaNumeric,
@@ -41,6 +43,7 @@ trait CharOps {
     fn first_char(&self) -> Option<char>;
     fn first_char_in(&self, options : &str) -> bool;
     fn skip_first_char(& self) -> Self;
+    fn char_contains(&self , options : &str) -> bool;
 }
 
 impl CharOps for &str {
@@ -58,35 +61,46 @@ impl CharOps for &str {
     fn skip_first_char(&self) -> Self {
         &self[1..]
     }
+
+    fn char_contains(&self , options : &str) -> bool {
+        for c in options.chars() {
+            if self.contains(c) {
+                return true
+            }
+        }
+        return false
+    }
 }
 
 impl Pattern {
-    pub fn match_string<'a>(& self , input : &'a str) -> Option<&'a str> {
+    pub fn match_string<'a>(& self , input : &'a str) -> HashSet<&'a str> {
 
         match self {
+            Pattern::ExactChar(c) if input.first_char().unwrap() == *c => {
+                hash_set!{input.skip_first_char()}
+            },
             Pattern::Numeric if input.first_char_in("0123456789") => {
-                Some(input.skip_first_char())
+                hash_set!{input.skip_first_char()}
             },
             Pattern::AlphaNumeric if input.first_char_in("_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") => {
-                Some(input.skip_first_char())
-            },
-            Pattern::ExactChar(c) if input.first_char().unwrap() == *c => {
-                Some(input.skip_first_char())
+                hash_set!{input.skip_first_char()}
             },
             Pattern::Sequence(sub_patterns) => {
-
-                let mut current_input = input;
+                let mut currect_input = hash_set! {input};
                 for subpattern in sub_patterns {
-                    if let Some(remaining_input) = subpattern.match_string(current_input) {
-                        current_input = remaining_input
+                    
+                    let mut remaining_input = HashSet::new();
+                    for inp in currect_input.iter() {
+                        let r = subpattern.match_string(inp);
+
+                        remaining_input.extend(r);
                     }
-                    else {
-                        return None
-                    }
+                    currect_input = remaining_input;
+
                 }
-                Some(current_input)
+                currect_input
             }
-            _ => None
+            _ => HashSet::new()
         }
     }
 }

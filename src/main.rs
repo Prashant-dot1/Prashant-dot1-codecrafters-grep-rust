@@ -4,6 +4,7 @@ use std::process;
 use std::str::FromStr;
 
 use grep_starter_rust::Pattern;
+use map_macro::hash_set;
 
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
@@ -12,19 +13,14 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
 
     println!("pattern metadata : {:?}", regexp);
     let res = regexp.match_string(input_line);
-    
     println!("the final result : {:?}" , res);
-    match res {
-        Some(r) => {
-            if r.is_empty() {
-                true
-            }
-            else{
-                false
-            }
-        },
-        None => false
+    if res.is_empty() {
+       return false;
     }
+    else if res.len() == 1 && res.contains("") {
+        return true;
+    }
+    return false
 }
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>

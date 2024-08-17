@@ -20,8 +20,15 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "map-macro",
  "thiserror",
 ]
+
+[[package]]
+name = "map-macro"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb950a42259642e5a3483115aca87eebed2a64886993463af9c9739c205b8d3a"
 
 [[package]]
 name = "proc-macro2"
