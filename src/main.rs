@@ -1,48 +1,29 @@
 use std::env;
 use std::io;
-use std::ops::Index;
 use std::process;
+use std::str::FromStr;
+
+use grep_starter_rust::Pattern;
+
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
-    if pattern.chars().count() == 1 {
-        return input_line.contains(pattern);
-    } 
-    else if pattern == "\\d" {
-        // for i in 0..10 {
-        //     let pattern = ('0' as u8 + i) as char;
-        //     println!("printing pattern : {pattern}");
-            
-        //     if input_line.contains(pattern) {
-        //         println!("the parttern matched for {pattern}");
-        //         return true;
-        //     }
-        // }
-        // return false;
-        return input_line.contains(|c: char| {c.is_digit(10)});
-    }
-    else if pattern == "\\w" {
-        return input_line.contains(|c : char| {c.is_alphanumeric()});
-    }
-    else if pattern.starts_with("[") && pattern.ends_with("]"){
-        let len = pattern.len();
 
-        match &pattern.chars().nth(1).unwrap() {
-            '^' => { 
-                let pat = &pattern[2..len-1];
-                println!("pat : {pat}");
-                let list_of_chars : Vec<char> = pat.chars().collect();
-                return !input_line.contains(&list_of_chars[..])
-            },
-            _ => {
-                let pat = &pattern[1..len-1];
-                println!("pat : {pat}");
-                let list_of_chars : Vec<char> = pat.chars().collect();
-                return input_line.contains(&list_of_chars[..])
+    let regexp = Pattern::from_str(pattern).unwrap();
+
+    println!("pattern metadata : {:?}", regexp);
+    let res = regexp.match_string(input_line);
+    
+    println!("the final result : {:?}" , res);
+    match res {
+        Some(r) => {
+            if r.is_empty() {
+                true
             }
-        };
-    }
-    else {
-        panic!("Unhandled pattern: {}", pattern)
+            else{
+                false
+            }
+        },
+        None => false
     }
 }
 
