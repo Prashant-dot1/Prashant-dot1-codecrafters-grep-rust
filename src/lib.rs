@@ -13,7 +13,8 @@ pub enum Pattern {
         negated : bool
     },
     // StartStringAnchor(Box<Pattern>)
-    StartStringAnchor(String)
+    StartStringAnchor(String),
+    EndStringAnchor(String)
 }
 
 impl FromStr for Pattern {
@@ -22,6 +23,10 @@ impl FromStr for Pattern {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut characters = s.chars();
         let mut items = Vec::new();
+
+        if characters.nth(s.len() - 1).unwrap() == '$' {
+            return Ok(Pattern::EndStringAnchor(s[..(s.len()-1)].to_string()));
+        }
         while let Some(c) = characters.next() {
             let element = match c {
                 '\\' => match characters.next() {
@@ -177,6 +182,15 @@ impl Pattern {
                     HashSet::new()
                 }
 
+            },
+            Pattern::EndStringAnchor(newPattern) => {
+                if !input.is_empty() {
+                    if input.ends_with(newPattern) {
+                        return hash_set! {"".to_string()};
+                    }
+                    return HashSet::new()
+                }
+                return HashSet::new();
             }
             _ => HashSet::new(),
         }
