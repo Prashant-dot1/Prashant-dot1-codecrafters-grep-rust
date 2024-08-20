@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, cell::RefCell, collections::HashSet, hash::Hash, rc::Rc, str::FromStr};
+use std::{collections::HashSet, str::FromStr};
 
 use map_macro::hash_set;
 
@@ -11,7 +11,8 @@ pub enum Pattern {
     CharacterSet {
         chars : String,
         negated : bool
-    }
+    },
+    StartStringAnchor(Box<Pattern>)
 }
 
 impl FromStr for Pattern {
@@ -53,6 +54,16 @@ impl FromStr for Pattern {
                     }
 
                     Pattern::CharacterSet { chars: chars, negated }
+                },
+                '^' => {
+                    let mut newStr = String::new();
+                    while let Some(c) = characters.next() {
+                        newStr.push(c)
+                    }
+                    let newP = Pattern::from_str(&newStr).unwrap();
+
+                    Pattern::StartStringAnchor(Box::new(newP))
+
                 },
                 e => Pattern::ExactChar(e)
             };
@@ -144,6 +155,16 @@ impl Pattern {
                 else {
                     HashSet::new()
                 }
+            },
+            Pattern::StartStringAnchor(newPattern) => {
+                if !input.is_empty() {
+                    let res = newPattern.match_string(input);
+                    return res
+                }
+                else{
+                    HashSet::new()
+                }
+
             }
             _ => HashSet::new(),
         }
