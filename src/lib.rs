@@ -7,7 +7,11 @@ pub enum Pattern {
     Numeric,
     AlphaNumeric,
     ExactChar(char),
-    Sequence(Vec<Pattern>)
+    Sequence(Vec<Pattern>),
+    CharacterSet {
+        chars : String,
+        negated : bool
+    }
 }
 
 impl FromStr for Pattern {
@@ -23,6 +27,32 @@ impl FromStr for Pattern {
                     Some('w') => Pattern::AlphaNumeric,
                     Some(c) => Pattern::ExactChar(c),
                     None => panic!("somethign wrong")
+                },
+                '[' => {
+                    let mut chars = String::new();
+                    let mut negated = false;
+                    let mut end = false;
+
+                    while let Some(c) = characters.next() {
+                        match c {
+                            '^' => {
+                                negated = true;
+                            },
+                            ']' => {
+                                end = true;
+                                break;
+                            },
+                            other => {
+                                chars.push(c);
+                            }
+                        }
+                    }
+
+                    if !end {
+                        return Err("Unterminated pattern '['".to_string());
+                    }
+
+                    Pattern::CharacterSet { chars: chars, negated }
                 },
                 e => Pattern::ExactChar(e)
             };
@@ -106,6 +136,15 @@ impl Pattern {
                 }
                 currect_input
             },
+            Pattern::CharacterSet { chars, negated } => {
+
+                if !input.is_empty() && input.first_char_in(chars) != *negated {
+                    hash_set! {input.skip_first_char().to_string()}
+                }
+                else {
+                    HashSet::new()
+                }
+            }
             _ => HashSet::new(),
         }
     }
