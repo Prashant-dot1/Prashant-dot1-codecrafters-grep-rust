@@ -12,7 +12,8 @@ pub enum Pattern {
         chars : String,
         negated : bool
     },
-    StartStringAnchor(Box<Pattern>)
+    // StartStringAnchor(Box<Pattern>)
+    StartStringAnchor(String)
 }
 
 impl FromStr for Pattern {
@@ -55,14 +56,23 @@ impl FromStr for Pattern {
 
                     Pattern::CharacterSet { chars: chars, negated }
                 },
+                // '^' => {
+                //     let mut newStr = String::new();
+                //     while let Some(c) = characters.next() {
+                //         newStr.push(c)
+                //     }
+                //     let newP = Pattern::from_str(&newStr).unwrap();
+
+                //     Pattern::StartStringAnchor(Box::new(newP))
+
+                // },
                 '^' => {
                     let mut newStr = String::new();
                     while let Some(c) = characters.next() {
                         newStr.push(c)
                     }
-                    let newP = Pattern::from_str(&newStr).unwrap();
 
-                    Pattern::StartStringAnchor(Box::new(newP))
+                    Pattern::StartStringAnchor(newStr)
 
                 },
                 e => Pattern::ExactChar(e)
@@ -158,8 +168,10 @@ impl Pattern {
             },
             Pattern::StartStringAnchor(newPattern) => {
                 if !input.is_empty() {
-                    let res = newPattern.match_string(input);
-                    return res
+                    if input.starts_with(newPattern) {
+                        return hash_set! {"".to_string()};
+                    }
+                    return HashSet::new()
                 }
                 else{
                     HashSet::new()
