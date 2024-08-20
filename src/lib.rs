@@ -24,7 +24,7 @@ impl FromStr for Pattern {
         let mut characters = s.chars();
         let mut items = Vec::new();
 
-        if characters.by_ref().nth(s.len() - 1).unwrap() == '$' {
+        if s.ends_with('$') {
             return Ok(Pattern::EndStringAnchor(s[..(s.len()-1)].to_string()));
         }
         while let Some(c) = characters.next() {
