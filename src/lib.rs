@@ -174,7 +174,7 @@ impl Pattern {
             Pattern::StartStringAnchor(newPattern) => {
                 if !input.is_empty() {
                     if input.starts_with(newPattern) {
-                        return hash_set! {"".to_string()};
+                        if input == newPattern { return hash_set! {"".to_string()}};
                     }
                     return HashSet::new()
                 }
