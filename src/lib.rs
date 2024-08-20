@@ -1,4 +1,4 @@
-use std::{collections::HashSet, hash::Hash, str::FromStr};
+use std::{borrow::Borrow, cell::RefCell, collections::HashSet, hash::Hash, rc::Rc, str::FromStr};
 
 use map_macro::hash_set;
 
@@ -41,66 +41,85 @@ impl FromStr for Pattern {
 
 trait CharOps {
     fn first_char(&self) -> Option<char>;
-    fn first_char_in(&self, options : &str) -> bool;
-    fn skip_first_char(& self) -> Self;
-    fn char_contains(&self , options : &str) -> bool;
+    fn first_char_in(&self, options: &str) -> bool;
+    fn skip_first_char(&self) -> &str;
+    fn get_starting_string<'a>(&'a self, p: &Pattern) -> Option<&'a str>;
 }
 
-impl CharOps for &str {
+impl CharOps for str {
     fn first_char(&self) -> Option<char> {
         self.chars().next()
     }
 
-    fn first_char_in(&self, options : &str) -> bool {
+    fn first_char_in(&self, options: &str) -> bool {
         match self.chars().next() {
             Some(c) => options.contains(c),
-            None => false
+            None => false,
         }
     }
 
-    fn skip_first_char(&self) -> Self {
+    fn skip_first_char(&self) -> &str {
         &self[1..]
     }
 
-    fn char_contains(&self , options : &str) -> bool {
-        for c in options.chars() {
-            if self.contains(c) {
-                return true
+    fn get_starting_string<'a>(&'a self, p: &Pattern) -> Option<&'a str> {
+        for i in 0..self.len() {
+            let inp = &self[i..];
+
+            if !p.match_string(inp).is_empty() {
+                return Some(inp);
             }
         }
-        return false
+        None
     }
 }
 
 impl Pattern {
-    pub fn match_string<'a>(& self , input : &'a str) -> HashSet<&'a str> {
-
+    pub fn match_string(&self, input: &str) -> HashSet<String> {
         match self {
             Pattern::ExactChar(c) if input.first_char().unwrap() == *c => {
-                hash_set!{input.skip_first_char()}
+                hash_set! { input.skip_first_char().to_string() }
             },
             Pattern::Numeric if input.first_char_in("0123456789") => {
-                hash_set!{input.skip_first_char()}
+                hash_set! { input.skip_first_char().to_string() }
             },
             Pattern::AlphaNumeric if input.first_char_in("_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") => {
-                hash_set!{input.skip_first_char()}
+                hash_set! { input.skip_first_char().to_string() }
             },
             Pattern::Sequence(sub_patterns) => {
-                let mut currect_input = hash_set! {input};
+                let mut currect_input = hash_set! { input.to_string() };
                 for subpattern in sub_patterns {
-                    
                     let mut remaining_input = HashSet::new();
+
                     for inp in currect_input.iter() {
-                        let r = subpattern.match_string(inp);
-
-                        remaining_input.extend(r);
+                        if let Some(starting_inp) = inp.as_str().get_starting_string(subpattern) {
+                            let res = subpattern.match_string(starting_inp);
+                            remaining_input.extend(res);
+                        }
                     }
-                    currect_input = remaining_input;
 
+                    if remaining_input.is_empty() {
+                        return HashSet::new();
+                    }
+
+                    currect_input = remaining_input;
                 }
                 currect_input
-            }
-            _ => HashSet::new()
+            },
+            _ => HashSet::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+
+    fn sally_3() {
+        let input = "this 3 apples";
+        let pattern  = Pattern::from_str("\\d apple").unwrap();
+
+        assert_eq!(pattern.match_string(input),hash_set! {"s".to_string()});
+        
     }
 }

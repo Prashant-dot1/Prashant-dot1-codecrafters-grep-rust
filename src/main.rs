@@ -17,7 +17,7 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     if res.is_empty() {
        return false;
     }
-    else if res.len() == 1 && res.contains("") {
+    else if res.len() == 1 {
         return true;
     }
     return false
