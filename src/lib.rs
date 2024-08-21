@@ -1,4 +1,4 @@
-use std::{collections::HashSet, option, str::FromStr};
+use std::{collections::HashSet, str::FromStr};
 
 use map_macro::hash_set;
 
@@ -16,7 +16,8 @@ pub enum Pattern {
     StartStringAnchor(String),
     EndStringAnchor(String),
     OneOrMore(char),
-    Optional(char)
+    Optional(char),
+    WildCard
 }
 
 impl FromStr for Pattern {
@@ -63,16 +64,7 @@ impl FromStr for Pattern {
 
                     Pattern::CharacterSet { chars: chars, negated }
                 },
-                // '^' => {
-                //     let mut newStr = String::new();
-                //     while let Some(c) = characters.next() {
-                //         newStr.push(c)
-                //     }
-                //     let newP = Pattern::from_str(&newStr).unwrap();
-
-                //     Pattern::StartStringAnchor(Box::new(newP))
-
-                // },
+                '.' => Pattern::WildCard,
                 '^' => {
                     let mut newStr = String::new();
                     while let Some(c) = characters.next() {
@@ -239,7 +231,8 @@ impl Pattern {
                 }
 
                 return hash_set! {input.to_string()};
-            }
+            },
+            Pattern::WildCard if input.first_char().is_some() => hash_set! {input.skip_first_char().to_string()},
             _ => HashSet::new(),
         }
     }
