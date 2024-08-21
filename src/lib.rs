@@ -15,7 +15,8 @@ pub enum Pattern {
     // StartStringAnchor(Box<Pattern>)
     StartStringAnchor(String),
     EndStringAnchor(String),
-    OneOrMore(char)
+    OneOrMore(char),
+    Optional(char)
 }
 
 impl FromStr for Pattern {
@@ -84,6 +85,9 @@ impl FromStr for Pattern {
                 e => { 
                     if characters.next_if(|&c| c == '+').is_some() {
                         Pattern::OneOrMore(e)
+                    }
+                    else if characters.next_if(|&c| c == '?').is_some() {
+                        Pattern::Optional(e)
                     }
                     else{
                         Pattern::ExactChar(e)
@@ -226,6 +230,10 @@ impl Pattern {
 
                 return HashSet::new();
 
+            },
+            Pattern::Optional(option_c) => {
+
+                return hash_set! {input[1..].to_string()};
             }
             _ => HashSet::new(),
         }
