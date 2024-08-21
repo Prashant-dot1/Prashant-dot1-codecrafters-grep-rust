@@ -129,7 +129,7 @@ impl CharOps for str {
     fn get_starting_string<'a>(&'a self, p: &Pattern) -> Option<&'a str> {
 
         match *p {
-            Pattern::ExactChar(_) => {
+            Pattern::Numeric | Pattern::AlphaNumeric | Pattern::ExactChar(_) => {
                 for i in 0..self.len() {
                     let inp = &self[i..];
         
