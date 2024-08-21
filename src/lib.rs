@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr};
+use std::{collections::HashSet, option, str::FromStr};
 
 use map_macro::hash_set;
 
@@ -233,7 +233,12 @@ impl Pattern {
             },
             Pattern::Optional(option_c) => {
 
-                return hash_set! {input[1..].to_string()};
+                let mut inp = input.chars().peekable();
+                if inp.next_if(|&c| c == *option_c).is_some() {
+                    return hash_set! {input[1..].to_string()};
+                }
+
+                return hash_set! {input.to_string()};
             }
             _ => HashSet::new(),
         }
