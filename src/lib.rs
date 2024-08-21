@@ -14,14 +14,15 @@ pub enum Pattern {
     },
     // StartStringAnchor(Box<Pattern>)
     StartStringAnchor(String),
-    EndStringAnchor(String)
+    EndStringAnchor(String),
+    OneOrMore(char)
 }
 
 impl FromStr for Pattern {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut characters = s.chars();
+        let mut characters = s.chars().peekable();
         let mut items = Vec::new();
 
         if s.ends_with('$') {
@@ -80,7 +81,14 @@ impl FromStr for Pattern {
                     Pattern::StartStringAnchor(newStr)
 
                 },
-                e => Pattern::ExactChar(e)
+                e => { 
+                    if characters.next_if(|&c| c == '+').is_some() {
+                        Pattern::OneOrMore(e)
+                    }
+                    else{
+                        Pattern::ExactChar(e)
+                    }
+                }
             };
 
             items.push(element);
@@ -119,14 +127,20 @@ impl CharOps for str {
     }
 
     fn get_starting_string<'a>(&'a self, p: &Pattern) -> Option<&'a str> {
-        for i in 0..self.len() {
-            let inp = &self[i..];
 
-            if !p.match_string(inp).is_empty() {
-                return Some(inp);
-            }
+        match *p {
+            Pattern::ExactChar(_) => {
+                for i in 0..self.len() {
+                    let inp = &self[i..];
+        
+                    if !p.match_string(inp).is_empty() {
+                        return Some(inp);
+                    }
+                }
+                None
+            },
+            _ => Some(self)
         }
-        None
     }
 }
 
@@ -191,6 +205,27 @@ impl Pattern {
                     return HashSet::new()
                 }
                 return HashSet::new();
+            },
+            Pattern::OneOrMore(repeat_c) => {
+                
+                println!("input got : {input}");
+                let mut inp = input.chars().peekable();
+                let mut i = 0;
+                
+                if inp.next_if(|&c| c == *repeat_c).is_some() {
+                    i = i+1;
+                    while inp.next_if(|&c| c == *repeat_c).is_some() {
+                        i = i+1;
+                    } 
+                }
+
+                if i > 1 {
+                    println!("after one or more : {}",&input[i..]);
+                    return hash_set! {input[i..].to_string()};
+                }
+
+                return HashSet::new();
+
             }
             _ => HashSet::new(),
         }
