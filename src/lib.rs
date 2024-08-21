@@ -219,7 +219,7 @@ impl Pattern {
                     } 
                 }
 
-                if i > 1 {
+                if i >= 1 {
                     println!("after one or more : {}",&input[i..]);
                     return hash_set! {input[i..].to_string()};
                 }
