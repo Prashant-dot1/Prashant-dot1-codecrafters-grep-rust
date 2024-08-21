@@ -17,7 +17,10 @@ pub enum Pattern {
     EndStringAnchor(String),
     OneOrMore(char),
     Optional(char),
-    WildCard
+    WildCard,
+    Alternation {
+        either_patterns : Vec<String>
+    }
 }
 
 impl FromStr for Pattern {
@@ -37,6 +40,43 @@ impl FromStr for Pattern {
                     Some('w') => Pattern::AlphaNumeric,
                     Some(c) => Pattern::ExactChar(c),
                     None => panic!("somethign wrong")
+                },
+                '(' => {
+                    let mut chars = String::new();
+                    let mut end =false;
+                    let mut either_patterns : Vec<String> = Vec::new();
+                    while let Some(c) = characters.next() {
+                        match c {
+                            '|' => {
+                                if !chars.is_empty(){
+                                    either_patterns.push(chars);
+                                    chars = String::new();
+                                }
+                                else {
+                                    either_patterns.push("".to_string());
+                                }
+                            }   
+                            ')' => {
+                                if !chars.is_empty(){
+                                    either_patterns.push(chars);
+                                    chars = String::new();
+                                } 
+                                end = true;
+                                break;
+                            },
+                            other => {
+                                chars.push(c);
+                            }
+                        }
+                    }
+
+                    if !end {
+                        return Err("Unterminated pattern '('".to_string());
+                    }
+
+                    Pattern::Alternation {
+                        either_patterns : either_patterns
+                    }
                 },
                 '[' => {
                     let mut chars = String::new();
@@ -233,6 +273,22 @@ impl Pattern {
                 return hash_set! {input.to_string()};
             },
             Pattern::WildCard if input.first_char().is_some() => hash_set! {input.skip_first_char().to_string()},
+            Pattern::Alternation { either_patterns } => {
+
+                for pattern in either_patterns {
+                    let sequencePattern = Pattern::from_str(&pattern).unwrap();
+
+                    let res = sequencePattern.match_string(input);
+                    if !res.is_empty() {
+                        return res;
+                    }
+                    else {
+                        continue;
+                    }
+                }
+
+                return HashSet::new();
+            }
             _ => HashSet::new(),
         }
     }
