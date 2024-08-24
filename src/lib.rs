@@ -132,11 +132,11 @@ impl Pattern {
                 },
                 Some(Modifier::ZeroOrMore) => {
                     let prev = items.pop().unwrap();
-                    items.push(Pattern::Optional(Box::new(prev)))
+                    items.push(Pattern::RepeatedOptional(Box::new(prev)))
                 },
                 Some(Modifier::ZeroOrOne) => {
                     let prev = items.pop().unwrap();
-                    items.push(Pattern::RepeatedOptional(Box::new(prev)));
+                    items.push(Pattern::Optional(Box::new(prev)));
                 },
                 Some(Modifier::Reference(index)) => {
                     let g = items
@@ -255,6 +255,6 @@ fn check_branch(input: &str, chars: Vec<Pattern>) -> Result<&str, &str> {
         }
     }
 
-    println!("sting returned :{}", input_mut);
+    // println!("sting returned :{}", input_mut);
     Ok(input_mut)
 }
