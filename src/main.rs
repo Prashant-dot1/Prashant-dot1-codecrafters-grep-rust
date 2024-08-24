@@ -1,27 +1,71 @@
 use std::env;
 use std::io;
 use std::process;
-use std::str::FromStr;
 
-use grep_starter_rust::Pattern;
-use map_macro::hash_set;
+use grep_starter_rust::*;
 
 
 fn match_pattern(input_line: &str, pattern: &str) -> bool {
 
-    let regexp = Pattern::from_str(pattern).unwrap();
+    let mut start_anchor = false;
+    let mut end_anchor = false;
 
-    println!("pattern metadata : {:?}", regexp);
-    let res = regexp.match_string(input_line);
-    println!("the final result : {:?}" , res);
-    if res.is_empty() {
-       return false;
+    let mut pattern = pattern;
+
+    if pattern.starts_with('^') {
+        start_anchor = true;
+        pattern = &pattern[1..];
     }
-    else if res.len() == 1 {
-        return true;
+
+    if pattern.ends_with('$') {
+        end_anchor = true;
+        pattern = &pattern[..pattern.len() - 1];
     }
-    return false
+    
+    let parsedPattern = Pattern::parsePattern(pattern);
+    format!("the parsed pattern is {:?}",parsedPattern);
+    let mut input = input_line;
+
+    loop {
+        'inner: loop {
+            for idx in 0..parsedPattern.len() {
+                let subpattern = parsedPattern.get(idx).unwrap();
+
+                match match_character(input, subpattern.clone()) {
+                    Ok(res) => {
+                        if res.is_empty() {
+                            // End of the pattern, match is succesful
+                            return idx == pattern.len() - 1;
+                        }
+
+                        input = res;
+                    }
+                    Err(res) => {
+                        if start_anchor {
+                            // Needed to match from the start
+                            return false;
+                        }
+
+                        if res.is_empty() {
+                            // End of the input, but didn't get the match
+                            return false;
+                        }
+
+                        input = res;
+
+                        // Reset the pattern
+                        break 'inner;
+                    }
+                }
+            }
+
+            // Whole pattern was matched and there's still more input left
+            // Match will fail if end anchor was set
+            return !end_anchor;
+        }
+    }
 }
+
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
 fn main() {

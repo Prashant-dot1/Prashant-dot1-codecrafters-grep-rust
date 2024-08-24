@@ -1,308 +1,260 @@
-use std::{collections::HashSet, str::FromStr};
+use std::{collections::HashSet, panic::PanicInfo, str::FromStr};
 
-use map_macro::hash_set;
+use anyhow::{Result};
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug,Clone, PartialEq, PartialOrd)]
 pub enum Pattern {
     Numeric,
     AlphaNumeric,
     ExactChar(char),
-    Sequence(Vec<Pattern>),
-    CharacterSet {
-        chars : String,
-        negated : bool
-    },
-    // StartStringAnchor(Box<Pattern>)
-    StartStringAnchor(String),
-    EndStringAnchor(String),
-    OneOrMore(char),
-    Optional(char),
-    WildCard,
-    Alternation {
-        either_patterns : Vec<String>
-    }
+    Group(Vec<Pattern>),
+    NegativeGroup(Vec<Pattern>),
+    Optional(Box<Pattern>),
+    Either((Vec<Pattern>,Vec<Pattern>)),
+    CaptureGroup(Vec<Pattern>),
+    AnyChar,
+    RepeatedOptional(Box<Pattern>)
 }
 
-impl FromStr for Pattern {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut characters = s.chars().peekable();
-        let mut items = Vec::new();
-
-        if s.ends_with('$') {
-            return Ok(Pattern::EndStringAnchor(s[..(s.len()-1)].to_string()));
-        }
-        while let Some(c) = characters.next() {
-            let element = match c {
-                '\\' => match characters.next() {
-                    Some('d') => Pattern::Numeric,
-                    Some('w') => Pattern::AlphaNumeric,
-                    Some(c) => Pattern::ExactChar(c),
-                    None => panic!("somethign wrong")
-                },
-                '(' => {
-                    let mut chars = String::new();
-                    let mut end =false;
-                    let mut either_patterns : Vec<String> = Vec::new();
-                    while let Some(c) = characters.next() {
-                        match c {
-                            '|' => {
-                                if !chars.is_empty(){
-                                    either_patterns.push(chars);
-                                    chars = String::new();
-                                }
-                                else {
-                                    either_patterns.push("".to_string());
-                                }
-                            }   
-                            ')' => {
-                                if !chars.is_empty(){
-                                    either_patterns.push(chars);
-                                    chars = String::new();
-                                } 
-                                end = true;
-                                break;
-                            },
-                            other => {
-                                chars.push(c);
-                            }
-                        }
-                    }
-
-                    if !end {
-                        return Err("Unterminated pattern '('".to_string());
-                    }
-
-                    Pattern::Alternation {
-                        either_patterns : either_patterns
-                    }
-                },
-                '[' => {
-                    let mut chars = String::new();
-                    let mut negated = false;
-                    let mut end = false;
-
-                    while let Some(c) = characters.next() {
-                        match c {
-                            '^' => {
-                                negated = true;
-                            },
-                            ']' => {
-                                end = true;
-                                break;
-                            },
-                            other => {
-                                chars.push(c);
-                            }
-                        }
-                    }
-
-                    if !end {
-                        return Err("Unterminated pattern '['".to_string());
-                    }
-
-                    Pattern::CharacterSet { chars: chars, negated }
-                },
-                '.' => Pattern::WildCard,
-                '^' => {
-                    let mut newStr = String::new();
-                    while let Some(c) = characters.next() {
-                        newStr.push(c)
-                    }
-
-                    Pattern::StartStringAnchor(newStr)
-
-                },
-                e => { 
-                    if characters.next_if(|&c| c == '+').is_some() {
-                        Pattern::OneOrMore(e)
-                    }
-                    else if characters.next_if(|&c| c == '?').is_some() {
-                        Pattern::Optional(e)
-                    }
-                    else{
-                        Pattern::ExactChar(e)
-                    }
-                }
-            };
-
-            items.push(element);
-        }
-
-        if items.len() == 1 {
-            return Ok(items.pop().expect("Has one item"));
-        }
-
-        Ok(Pattern::Sequence(items))
-    }
-}
-
-
-trait CharOps {
-    fn first_char(&self) -> Option<char>;
-    fn first_char_in(&self, options: &str) -> bool;
-    fn skip_first_char(&self) -> &str;
-    fn get_starting_string<'a>(&'a self, p: &Pattern) -> Option<&'a str>;
-}
-
-impl CharOps for str {
-    fn first_char(&self) -> Option<char> {
-        self.chars().next()
-    }
-
-    fn first_char_in(&self, options: &str) -> bool {
-        match self.chars().next() {
-            Some(c) => options.contains(c),
-            None => false,
-        }
-    }
-
-    fn skip_first_char(&self) -> &str {
-        &self[1..]
-    }
-
-    fn get_starting_string<'a>(&'a self, p: &Pattern) -> Option<&'a str> {
-
-        match *p {
-            Pattern::Numeric | Pattern::AlphaNumeric | Pattern::ExactChar(_) => {
-                for i in 0..self.len() {
-                    let inp = &self[i..];
-        
-                    if !p.match_string(inp).is_empty() {
-                        return Some(inp);
-                    }
-                }
-                None
-            },
-            _ => Some(self)
-        }
-    }
+enum Modifier {
+    OneOrMore,
+    ZeroOrOne,
+    ZeroOrMore,
+    Reference(usize),
 }
 
 impl Pattern {
-    pub fn match_string(&self, input: &str) -> HashSet<String> {
-        match self {
-            Pattern::ExactChar(c) if input.first_char().unwrap() == *c => {
-                hash_set! { input.skip_first_char().to_string() }
-            },
-            Pattern::Numeric if input.first_char_in("0123456789") => {
-                hash_set! { input.skip_first_char().to_string() }
-            },
-            Pattern::AlphaNumeric if input.first_char_in("_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") => {
-                hash_set! { input.skip_first_char().to_string() }
-            },
-            Pattern::Sequence(sub_patterns) => {
-                let mut currect_input = hash_set! { input.to_string() };
-                for subpattern in sub_patterns {
-                    let mut remaining_input = HashSet::new();
 
-                    for inp in currect_input.iter() {
-                        if let Some(starting_inp) = inp.as_str().get_starting_string(subpattern) {
-                            let res = subpattern.match_string(starting_inp);
-                            remaining_input.extend(res);
-                        }
+    fn SpecialChar(c : char) -> Pattern {
+        match c { 
+            'd' => Pattern::Numeric,
+            'w' => Pattern::AlphaNumeric,
+            '\\' => Pattern::ExactChar(c),
+            _ => panic!("Unhandled special char")
+        }
+    }
+
+    fn parseCharByChar(input : &str) -> (&str , Option<Pattern> , Option<Modifier>){
+
+        match input.chars().next() {
+            Some('\\') => {
+                let rem = &input[2..];
+
+                match input.chars().nth(1).unwrap() {
+                    index @'1'..='9' => {
+                        (
+                            rem,
+                            None,
+                            Some(Modifier::Reference(index.to_digit(10).unwrap() as usize))
+                        )
                     }
-
-                    if remaining_input.is_empty() {
-                        return HashSet::new();
+                    c => {
+                        (
+                            rem,
+                            Some(Pattern::SpecialChar(c)),
+                            None
+                        )
                     }
-
-                    currect_input = remaining_input;
                 }
-                currect_input
             },
-            Pattern::CharacterSet { chars, negated } => {
+            Some('[') => {
+                let mut rem = &input[1..];
 
-                if !input.is_empty() && input.first_char_in(chars) != *negated {
-                    hash_set! {input.skip_first_char().to_string()}
+                let mut negated = false;
+                if &input[1..2] == "^" {
+                    negated = true;
+                    rem = &rem[1..];
+                }
+
+                let position = rem.find(']').expect("Terminated wrongly");
+
+                let vecPattern = Pattern::parsePattern(&rem[..position]);
+                rem = &rem[position..];
+
+                let resGroup = if negated {
+                    Pattern::NegativeGroup(vecPattern)
                 }
                 else {
-                    HashSet::new()
-                }
+                    Pattern::Group(vecPattern)
+                };
+
+                (rem, Some(resGroup) , None)
             },
-            Pattern::StartStringAnchor(newPattern) => {
-                if !input.is_empty() {
-                    if input.starts_with(newPattern) {
-                        if input == newPattern { return hash_set! {"".to_string()}};
-                    }
-                    return HashSet::new()
-                }
-                else{
-                    HashSet::new()
-                }
+            Some('(') => {
+                let mut rem = &input[1..];
 
+
+                let left  = if let Some(pos) = rem.find('|') {
+                    let pattern = &rem[..pos];
+                    rem = &rem[pos+1..];
+
+                    Some(Pattern::parsePattern(pattern))
+                }
+                else {
+                    None
+                };
+
+                let pos = rem.find(')').expect("Unterminated )");
+                let right = Pattern::parsePattern(&rem[..pos]);
+                rem = &rem[pos..];
+
+                let res = match left {
+                    Some(left) => {
+                        vec![Pattern::Either((left, right))]
+                    },
+                    _ => right
+                };
+
+
+                (rem, Some(Pattern::CaptureGroup(res)), None)
             },
-            Pattern::EndStringAnchor(newPattern) => {
-                if !input.is_empty() {
-                    if input.ends_with(newPattern) {
-                        return hash_set! {"".to_string()};
-                    }
-                    return HashSet::new()
-                }
-                return HashSet::new();
-            },
-            Pattern::OneOrMore(repeat_c) => {
-                
-                println!("input got : {input}");
-                let mut inp = input.chars().peekable();
-                let mut i = 0;
-                
-                if inp.next_if(|&c| c == *repeat_c).is_some() {
-                    i = i+1;
-                    while inp.next_if(|&c| c == *repeat_c).is_some() {
-                        i = i+1;
-                    } 
-                }
-
-                if i >= 1 {
-                    println!("after one or more : {}",&input[i..]);
-                    return hash_set! {input[i..].to_string()};
-                }
-
-                return HashSet::new();
-
-            },
-            Pattern::Optional(option_c) => {
-
-                let mut inp = input.chars().peekable();
-                if inp.next_if(|&c| c == *option_c).is_some() {
-                    return hash_set! {input[1..].to_string()};
-                }
-
-                return hash_set! {input.to_string()};
-            },
-            Pattern::WildCard if input.first_char().is_some() => hash_set! {input.skip_first_char().to_string()},
-            Pattern::Alternation { either_patterns } => {
-
-                for pattern in either_patterns {
-                    let sequencePattern = Pattern::from_str(&pattern).unwrap();
-
-                    let res = sequencePattern.match_string(input);
-                    if !res.is_empty() {
-                        return res;
-                    }
-                    else {
-                        continue;
-                    }
-                }
-
-                return HashSet::new();
-            }
-            _ => HashSet::new(),
+            Some('+') => (&input[1..], None, Some(Modifier::OneOrMore)),
+            Some('?') => (&input[1..], None, Some(Modifier::ZeroOrOne)),
+            Some('*') => (&input[1..], None, Some(Modifier::ZeroOrMore)),
+            Some('.') => (&input[1..], Some(Pattern::AnyChar), None),
+            Some(c) => (&input[1..], Some(Pattern::ExactChar(c)), None),
+            _ => panic!("Unhandled characted")
         }
+    }
+
+
+    pub fn parsePattern(input : &str) -> Vec<Pattern> {
+
+        let mut items : Vec<Pattern> = Vec::new();
+        let mut remainder = input;
+
+        while !remainder.is_empty() {
+            let (remaining_inp , character , modifier) = Pattern::parseCharByChar(remainder);
+
+            match modifier {
+                Some(Modifier::OneOrMore) => {
+                    let prev = items.last().unwrap().clone();
+
+                    items.push(Pattern::RepeatedOptional(Box::new(prev)))
+                },
+                Some(Modifier::ZeroOrMore) => {
+                    let prev = items.pop().unwrap();
+                    items.push(Pattern::Optional(Box::new(prev)))
+                },
+                Some(Modifier::ZeroOrOne) => {
+                    let prev = items.pop().unwrap();
+                    items.push(Pattern::RepeatedOptional(Box::new(prev)));
+                },
+                Some(Modifier::Reference(index)) => {
+                    let g = items
+                                        .iter()
+                                        .filter(|p| matches!(p , Pattern::CaptureGroup(_)))
+                                        .nth(index-1)
+                                        .unwrap();
+
+                    if let Pattern::CaptureGroup(res) = g {
+                        items.extend(res.clone())
+                    }
+                },
+                None => {
+                    items.push(character.expect("Should have a character without modifier"));
+                }
+            }
+            remainder = remaining_inp;
+        }
+
+        items
     }
 }
 
-#[cfg(test)]
-mod tests{
-    use super::*;
 
-    fn sally_3() {
-        let input = "this 3 apples";
-        let pattern  = Pattern::from_str("\\d apple").unwrap();
+pub fn match_character(input : &str , subpattern : Pattern) -> Result<&str , &str> {
 
-        assert_eq!(pattern.match_string(input),hash_set! {"s".to_string()});
-        
+    if input.is_empty() {
+        return Ok("");
     }
+    let mut input = input;
+    let ch = input.chars().next().unwrap();
+    
+    match subpattern {
+        Pattern::AnyChar => to_match_result(input, true),
+        Pattern::ExactChar(c) => to_match_result(input, c == ch),
+        Pattern::Numeric => to_match_result(input, ch.is_ascii_digit()),
+        Pattern::AlphaNumeric => to_match_result(input, ch == '_' || ch.is_ascii_alphanumeric()),
+        Pattern::Group(items) => to_match_result(
+            input,
+            items
+                .iter()
+                .any(|i| match_character(input, i.clone()).is_ok()),
+        ),
+        Pattern::NegativeGroup(items) => to_match_result(
+            input,
+            !items
+                .iter()
+                .any(|i| match_character(input, i.clone()).is_ok()),
+        ),
+        Pattern::Optional(c) => {
+            if match_character(input, *c.clone()).is_ok() {
+                return Ok(&input[1..])
+            } else {
+                return Ok(input)
+            }
+        },
+        Pattern::RepeatedOptional(c) => {
+            loop {
+                if match_character(input, *c.clone()).is_ok() {
+                     if input.is_empty() {
+                         break;
+                     }
+                    input = &input[1..];
+                } else {
+                    break;
+                }
+            }
+
+            return Ok(input)
+        },
+        Pattern::Either((left, right)) => {
+            if let Ok(res) = check_branch(input, left) {
+                Ok(res)
+            } else if let Ok(res) = check_branch(input, right) {
+                Ok(res)
+            } else {
+                Err(input)
+            }
+        },
+        Pattern::CaptureGroup(group) => {
+            if let Ok(res) = check_branch(input, group) {
+                Ok(res)
+            } else {
+                Err(&input[1..])
+            }
+        }
+    }
+
+}
+
+
+fn to_match_result(inp : &str , has_match : bool) -> Result<&str , &str> {
+
+    if has_match {
+        return Ok(&inp[1..]);
+    }
+    else {
+        Err(&inp[1..])
+    }
+}
+
+
+  
+fn check_branch(input: &str, chars: Vec<Pattern>) -> Result<&str, &str> {
+    let mut input_mut = input;
+
+    for ch in chars {
+        match match_character(input_mut, ch) {
+            Ok(res) => {
+                input_mut = res;
+            }
+            Err(_) => {
+                return Err(input);
+            }
+        }
+    }
+
+    Ok(input_mut)
 }
