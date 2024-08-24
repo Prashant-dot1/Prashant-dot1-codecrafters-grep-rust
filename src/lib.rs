@@ -248,6 +248,7 @@ fn check_branch(input: &str, chars: Vec<Pattern>) -> Result<&str, &str> {
     for ch in chars {
         match match_character(input_mut, ch) {
             Ok(res) => {
+                println!("{}", res);
                 input_mut = res;
             }
             Err(_) => {
@@ -256,5 +257,6 @@ fn check_branch(input: &str, chars: Vec<Pattern>) -> Result<&str, &str> {
         }
     }
 
+    println!("sting returned :{}", input_mut);
     Ok(input_mut)
 }
