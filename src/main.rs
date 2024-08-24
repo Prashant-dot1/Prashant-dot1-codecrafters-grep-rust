@@ -11,7 +11,7 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     let mut end_anchor = false;
 
     let mut pattern = pattern;
-
+    let mut captures = Vec::new();
     if pattern.starts_with('^') {
         start_anchor = true;
         pattern = &pattern[1..];
@@ -36,7 +36,7 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
                 let subpattern = parsed_pattern.get(idx).unwrap();
                 println!("subpattern : {:?}",subpattern);
                 println!("next input :{}", input);
-                match match_character(input, subpattern.clone()) {
+                match match_character(input, subpattern.clone(), &mut captures) {
                     Ok(res) => {
                         if res.is_empty() {
                             // End of the pattern, match is succesful
