@@ -1,6 +1,4 @@
-use std::{collections::HashSet, panic::PanicInfo, str::FromStr};
-
-use anyhow::{Result};
+use anyhow::Result;
 
 #[derive(Debug,Clone, PartialEq, PartialOrd)]
 pub enum Pattern {
@@ -25,7 +23,7 @@ enum Modifier {
 
 impl Pattern {
 
-    fn SpecialChar(c : char) -> Pattern {
+    fn special_char(c : char) -> Pattern {
         match c { 
             'd' => Pattern::Numeric,
             'w' => Pattern::AlphaNumeric,
@@ -34,7 +32,7 @@ impl Pattern {
         }
     }
 
-    fn parseCharByChar(input : &str) -> (&str , Option<Pattern> , Option<Modifier>){
+    fn parse_char_by_char(input : &str) -> (&str , Option<Pattern> , Option<Modifier>){
 
         match input.chars().next() {
             Some('\\') => {
@@ -51,7 +49,7 @@ impl Pattern {
                     c => {
                         (
                             rem,
-                            Some(Pattern::SpecialChar(c)),
+                            Some(Pattern::special_char(c)),
                             None
                         )
                     }
@@ -68,17 +66,17 @@ impl Pattern {
 
                 let position = rem.find(']').expect("Terminated wrongly");
 
-                let vecPattern = Pattern::parsePattern(&rem[..position]);
+                let vec_pattern = Pattern::parse_pattern(&rem[..position]);
                 rem = &rem[position..];
 
-                let resGroup = if negated {
-                    Pattern::NegativeGroup(vecPattern)
+                let res_group = if negated {
+                    Pattern::NegativeGroup(vec_pattern)
                 }
                 else {
-                    Pattern::Group(vecPattern)
+                    Pattern::Group(vec_pattern)
                 };
 
-                (&rem[1..], Some(resGroup) , None)
+                (&rem[1..], Some(res_group) , None)
             },
             Some('(') => {
                 let mut rem = &input[1..];
@@ -88,14 +86,14 @@ impl Pattern {
                     let pattern = &rem[..pos];
                     rem = &rem[pos+1..];
 
-                    Some(Pattern::parsePattern(pattern))
+                    Some(Pattern::parse_pattern(pattern))
                 }
                 else {
                     None
                 };
 
                 let pos = rem.find(')').expect("Unterminated )");
-                let right = Pattern::parsePattern(&rem[..pos]);
+                let right = Pattern::parse_pattern(&rem[..pos]);
                 rem = &rem[pos+1..];
 
                 let res = match left {
@@ -118,13 +116,13 @@ impl Pattern {
     }
 
 
-    pub fn parsePattern(input : &str) -> Vec<Pattern> {
+    pub fn parse_pattern(input : &str) -> Vec<Pattern> {
 
         let mut items : Vec<Pattern> = Vec::new();
         let mut remainder = input;
 
         while !remainder.is_empty() {
-            let (remaining_inp , character , modifier) = Pattern::parseCharByChar(remainder);
+            let (remaining_inp , character , modifier) = Pattern::parse_char_by_char(remainder);
 
             match modifier {
                 Some(Modifier::OneOrMore) => {
@@ -248,7 +246,7 @@ fn check_branch(input: &str, chars: Vec<Pattern>) -> Result<&str, &str> {
     for ch in chars {
         match match_character(input_mut, ch) {
             Ok(res) => {
-                println!("{}", res);
+                // println!("{}", res);
                 input_mut = res;
             }
             Err(_) => {

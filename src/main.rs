@@ -22,9 +22,9 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
         pattern = &pattern[..pattern.len() - 1];
     }
     
-    let parsedPattern = Pattern::parsePattern(pattern);
+    let parsed_pattern = Pattern::parse_pattern(pattern);
     
-    let mut temp = parsedPattern.iter();
+    let mut temp = parsed_pattern.iter();
     while let Some(p) = temp.next() {
         println!("the pattern : {:?}", p);
     }
@@ -32,15 +32,16 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
 
     loop {
         'inner: loop {
-            for idx in 0..parsedPattern.len() {
-                let subpattern = parsedPattern.get(idx).unwrap();
-                println!("subpattern : {:?}",subpattern);
-                println!("next input :{}", input);
+            for idx in 0..parsed_pattern.len() {
+                let subpattern = parsed_pattern.get(idx).unwrap();
+                // println!("subpattern : {:?}",subpattern);
+                // println!("next input :{}", input);
                 match match_character(input, subpattern.clone()) {
                     Ok(res) => {
                         if res.is_empty() {
                             // End of the pattern, match is succesful
-                            return idx == parsedPattern.len() - 1;
+                            // println!("res is now empty : idx :{} and parsed_pattern len idx:{}" , idx , parsed_pattern.len() -1);
+                            return idx == parsed_pattern.len() - 1;
                         }
                         input = res;
                     }
@@ -65,7 +66,7 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
 
             // Whole pattern was matched and there's still more input left
             // Match will fail if end anchor was set
-            println!("end anchor : {}", end_anchor);
+            // println!("end anchor : {}", end_anchor);
             return !end_anchor;
         }
     }
