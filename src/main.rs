@@ -24,10 +24,10 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     
     let parsed_pattern = Pattern::parse_pattern(pattern);
     
-    let mut temp = parsed_pattern.iter();
-    while let Some(p) = temp.next() {
-        println!("the pattern : {:?}", p);
-    }
+    // let mut temp = parsed_pattern.iter();
+    // while let Some(p) = temp.next() {
+    //     println!("the pattern : {:?}", p);
+    // }
     let mut input = input_line;
 
     loop {
