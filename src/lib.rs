@@ -78,7 +78,7 @@ impl Pattern {
                     Pattern::Group(vecPattern)
                 };
 
-                (rem, Some(resGroup) , None)
+                (&rem[1..], Some(resGroup) , None)
             },
             Some('(') => {
                 let mut rem = &input[1..];
@@ -96,7 +96,7 @@ impl Pattern {
 
                 let pos = rem.find(')').expect("Unterminated )");
                 let right = Pattern::parsePattern(&rem[..pos]);
-                rem = &rem[pos..];
+                rem = &rem[pos+1..];
 
                 let res = match left {
                     Some(left) => {

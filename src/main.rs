@@ -23,7 +23,11 @@ fn match_pattern(input_line: &str, pattern: &str) -> bool {
     }
     
     let parsedPattern = Pattern::parsePattern(pattern);
-    format!("the parsed pattern is {:?}",parsedPattern);
+    
+    let mut temp = parsedPattern.iter();
+    while let Some(p) = temp.next() {
+        println!("the pattern : {:?}", p);
+    }
     let mut input = input_line;
 
     loop {
@@ -77,7 +81,7 @@ fn main() {
         process::exit(1);
     }
 
-    let pattern = env::args().nth(2).unwrap();
+    let pattern = dbg!(env::args().nth(2).unwrap());
     let mut input_line = String::new();
 
     io::stdin().read_line(&mut input_line).unwrap();
